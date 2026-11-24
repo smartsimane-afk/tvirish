@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Blog Dashboard | TVirish</title>
+<link rel="icon" type="image/jpeg" href="../logo.jpg">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/fontawesome.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/solid.min.css">
+<link rel="stylesheet" href="../styles.css">
+<style>
+body{background:var(--ob-l)}
+.dash-top{background:var(--ob-k);color:#fff;padding:14px 0}
+.dash-top .container{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.dash-top strong{font-family:var(--ob-h);font-size:18px}
+.dash-top em{color:var(--ob-o);font-style:normal}
+.dash-top a,.dash-top button{color:#ccc;font-size:14px;background:none;border:0;cursor:pointer;text-decoration:none;font-family:var(--ob-f)}
+.dash-top a:hover,.dash-top button:hover{color:#fff}
+.dash{max-width:900px;margin:0 auto;padding:30px 16px 80px}
+.panel{background:#fff;border:1px solid var(--ob-b);border-radius:16px;padding:26px;margin-bottom:24px}
+.panel h2{font-size:1.3rem;font-weight:800;margin-bottom:18px}
+.login{max-width:380px;margin:12vh auto 0}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px;font:600 13px var(--ob-f);color:#444}
+.field small{font-weight:400;color:var(--ob-m)}
+.field input,.field textarea{font:400 15px var(--ob-f);padding:12px 14px;border:1px solid var(--ob-b);border-radius:8px;color:var(--ob-t);background:#fff;width:100%}
+.field input:focus,.field textarea:focus{outline:none;border-color:var(--ob-o);box-shadow:0 0 0 3px rgba(255,107,0,.12)}
+.field textarea{resize:vertical;min-height:320px;line-height:1.6}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:600px){.row{grid-template-columns:1fr}}
+.toolbar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.toolbar button,.tab{border:1px solid var(--ob-b);background:#fff;border-radius:6px;padding:6px 10px;font:600 13px var(--ob-f);cursor:pointer;color:#333}
+.toolbar button:hover,.tab:hover{border-color:var(--ob-o);color:var(--ob-od)}
+.tab.on{background:var(--ob-k);color:#fff;border-color:var(--ob-k)}
+.tabs{display:flex;gap:6px;margin-left:auto}
+.cover-drop{border:2px dashed var(--ob-b);border-radius:12px;padding:18px;text-align:center;color:var(--ob-m);cursor:pointer;font-size:14px}
+.cover-drop:hover{border-color:var(--ob-o)}
+.cover-drop img{max-height:200px;margin:0 auto 10px;border-radius:8px}
+.preview{border:1px solid var(--ob-b);border-radius:8px;min-height:320px;background:#fff}
+.preview .article-body{padding:20px}
+.msg{padding:12px 14px;border-radius:8px;font-size:14px;margin-bottom:16px}
+.msg.err{background:#fdecec;color:#a11}
+.msg.ok{background:var(--ie-gt);color:var(--ie-gd)}
+.msg a{font-weight:700}
+.posts{list-style:none;margin:0;padding:0}
+.posts li{display:flex;align-items:center;gap:14px;padding:12px 0;border-top:1px solid var(--ob-b)}
+.posts li:first-child{border-top:0}
+.posts img{width:72px;height:44px;object-fit:cover;border-radius:6px;flex:none}
+.posts .t{flex:1;min-width:0}
+.posts .t a{font-weight:600;text-decoration:none;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.posts .t small{color:var(--ob-m)}
+.del{border:0;background:none;color:#b33;cursor:pointer;font-size:14px;padding:6px}
+.help{font-size:13px;color:var(--ob-m);line-height:1.7;margin-top:6px}
+.help code{background:var(--ob-l);padding:1px 5px;border-radius:4px}
+.btn[disabled]{opacity:.6;pointer-events:none}
+[hidden]{display:none !important}
+</style>
+</head>
+<body>
+
+<div class="dash-top">
+  <div class="container">
+    <strong>TV<em>irish</em> · Blog Dashboard</strong>
+    <span><a href="../blog.html" target="_blank">View blog <i class="fas fa-arrow-up-right-from-square"></i></a>
+    <button id="logout" hidden>&nbsp;·&nbsp; Log out</button></span>
+  </div>
+</div>
+
+<main class="dash">
+  <form id="loginForm" class="panel login">
+    <h2>Log in</h2>
+    <div id="loginMsg" class="msg err" hidden></div>
+    <label class="field">Password<input type="password" id="password" required autofocus></label>
+    <button class="btn btn-block" type="submit">Log in</button>
+  </form>
+
+  <div id="app" hidden>
+    <form id="postForm" class="panel">
+      <h2>New blog post</h2>
+      <div id="formMsg" class="msg" hidden></div>
+      <label class="field">Title<input name="title" maxlength="140" required placeholder="e.g. How to Watch the Six Nations in Ireland"></label>
+      <label class="field">Short summary <small>Shown on the blog page and in Google results (1–2 sentences).</small>
+        <input name="excerpt" maxlength="300" required></label>
+      <div class="row">
+        <label class="field">Publish date<input type="date" name="date" required></label>
+        <label class="field">Category <small>Optional, e.g. Sports, Guides</small><input name="tag" maxlength="40"></label>
+      </div>
+      <div class="field">Cover image
+        <label class="cover-drop" id="coverDrop">
+          <img id="coverPreview" hidden alt="">
+          <span id="coverText"><i class="fas fa-image"></i> Click to choose a photo (JPG, PNG or WebP)</span>
+          <input type="file" id="coverInput" accept="image/jpeg,image/png,image/webp" hidden>
+        </label>
+      </div>
+      <label class="field">Image description <small>Describes the photo for Google and screen readers.</small><input name="imageAlt" maxlength="200"></label>
+
+      <div class="field">
+        <div class="toolbar">
+          <button type="button" data-wrap="## " title="Heading">H2</button>
+          <button type="button" data-wrap="### " title="Subheading">H3</button>
+          <button type="button" data-wrap="**" title="Bold"><i class="fas fa-bold"></i></button>
+          <button type="button" data-wrap="*" title="Italic"><i class="fas fa-italic"></i></button>
+          <button type="button" data-wrap="- " title="Bullet list"><i class="fas fa-list-ul"></i></button>
+          <button type="button" data-wrap="1. " title="Numbered list"><i class="fas fa-list-ol"></i></button>
+          <button type="button" data-wrap="link" title="Link"><i class="fas fa-link"></i></button>
+          <span class="tabs"><button type="button" class="tab on" data-view="write">Write</button><button type="button" class="tab" data-view="preview">Preview</button></span>
+        </div>
+        <textarea name="body" id="body" required placeholder="Write your article here. Leave an empty line between paragraphs."></textarea>
+        <div id="preview" class="preview" hidden><div class="article-body"></div></div>
+        <p class="help">Formatting: <code>## Heading</code> · <code>**bold**</code> · <code>*italic*</code> · <code>- bullet</code> · <code>1. numbered</code> · <code>[link text](https://...)</code> · empty line = new paragraph</p>
+      </div>
+      <button class="btn" type="submit" id="publishBtn"><i class="fas fa-paper-plane"></i>Publish post</button>
+    </form>
+
+    <section class="panel">
+      <h2>Published posts</h2>
+      <ul class="posts" id="posts"><li>Loading…</li></ul>
+    </section>
+  </div>
+</main>
+
+<script type="module">
+import { markdownToHtml } from './markdown.js';
+
+const $ = (id) => document.getElementById(id);
+const store = {
+  get() { try { return sessionStorage.getItem('blogPw') || ''; } catch { return ''; } },
+  set(v) { try { v ? sessionStorage.setItem('blogPw', v) : sessionStorage.removeItem('blogPw'); } catch {} },
+};
+let password = store.get();
+let cover = null; // { data, type }
+
+async function api(method, body, query = '') {
+  const res = await fetch('/api/posts' + query, {
+    method,
+    headers: { 'x-admin-password': password, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json().catch(() => ({ error: `Server error (${res.status}).` }));
+  if (!res.ok) throw Object.assign(new Error(data.error || 'Something went wrong.'), { status: res.status });
+  return data;
+}
+
+function show(el, text, kind) {
+  el.className = 'msg ' + kind;
+  el.innerHTML = text;
+  el.hidden = !text;
+}
+
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+async function loadPosts() {
+  const { posts } = await api('GET');
+  $('posts').innerHTML = posts.length ? posts.map((p) => `
+    <li>
+      <img src="../${esc(p.image)}" alt="">
+      <div class="t"><a href="../${esc(p.slug)}.html" target="_blank">${esc(p.title)}</a><small>${esc(p.date)}</small></div>
+      <button class="del" data-slug="${esc(p.slug)}" data-title="${esc(p.title)}"><i class="fas fa-trash"></i> Delete</button>
+    </li>`).join('') : '<li>No posts yet.</li>';
+}
+
+async function enter() {
+  try {
+    await loadPosts();
+    $('loginForm').hidden = true;
+    $('app').hidden = false;
+    $('logout').hidden = false;
+  } catch (err) {
+    store.set('');
+    if (password) show($('loginMsg'), esc(err.message), 'err');
+  }
+}
+
+$('loginForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  password = $('password').value;
+  store.set(password);
+  enter();
+});
+$('logout').addEventListener('click', () => { store.set(''); location.reload(); });
+
+$('posts').addEventListener('click', async (e) => {
+  const btn = e.target.closest('.del');
+  if (!btn || !confirm(`Delete "${btn.dataset.title}"? This removes it from the website.`)) return;
+  btn.disabled = true;
+  try {
+    await api('DELETE', null, '?slug=' + encodeURIComponent(btn.dataset.slug));
+    show($('formMsg'), 'Post deleted. The website updates in about a minute.', 'ok');
+    btn.closest('li').remove();
+  } catch (err) {
+    alert(err.message);
+    btn.disabled = false;
+  }
+});
+
+// Cover image: shrink to max 1600px wide JPEG so uploads stay small.
+$('coverInput').addEventListener('change', async () => {
+  const file = $('coverInput').files[0];
+  if (!file) return;
+  const img = new Image();
+  img.src = URL.createObjectURL(file);
+  await img.decode();
+  const scale = Math.min(1, 1600 / img.naturalWidth);
+  const canvas = Object.assign(document.createElement('canvas'), {
+    width: Math.round(img.naturalWidth * scale), height: Math.round(img.naturalHeight * scale),
+  });
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+  cover = { type: 'image/jpeg', data: dataUrl.split(',')[1] };
+  $('coverPreview').src = dataUrl;
+  $('coverPreview').hidden = false;
+  $('coverText').textContent = 'Click to change the photo';
+});
+
+// Toolbar
+const body = $('body');
+document.querySelector('.toolbar').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-wrap]');
+  if (!btn) return;
+  const w = btn.dataset.wrap;
+  const { selectionStart: s, selectionEnd: end, value } = body;
+  const sel = value.slice(s, end);
+  let insert;
+  if (w === 'link') {
+    const url = prompt('Link address (https://...)');
+    if (!url) return;
+    insert = `[${sel || 'link text'}](${url})`;
+  } else if (w.endsWith(' ')) {
+    const lineStart = value.lastIndexOf('\n', s - 1) + 1;
+    body.setRangeText(w, lineStart, lineStart, 'end');
+    body.focus();
+    return;
+  } else {
+    insert = w + (sel || 'text') + w;
+  }
+  body.setRangeText(insert, s, end, 'end');
+  body.focus();
+});
+
+document.querySelector('.tabs').addEventListener('click', (e) => {
+  const tab = e.target.closest('.tab');
+  if (!tab) return;
+  const preview = tab.dataset.view === 'preview';
+  document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('on', t === tab));
+  if (preview) $('preview').firstElementChild.innerHTML = markdownToHtml(body.value) || '<p>Nothing to preview yet.</p>';
+  $('preview').hidden = !preview;
+  body.hidden = preview;
+});
+
+$('postForm').elements.date.value = new Date().toISOString().slice(0, 10);
+
+$('postForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!cover) return show($('formMsg'), 'Please choose a cover image.', 'err');
+  const f = e.target.elements;
+  $('publishBtn').disabled = true;
+  show($('formMsg'), 'Publishing…', 'ok');
+  try {
+    const result = await api('POST', {
+      title: f.title.value, excerpt: f.excerpt.value, date: f.date.value, tag: f.tag.value,
+      imageAlt: f.imageAlt.value, body: f.body.value, image: cover,
+    });
+    show($('formMsg'), `Published! Your post will be live in about a minute at <a href="${esc(result.path)}" target="_blank">${esc(result.path)}</a>.`, 'ok');
+    e.target.reset();
+    f.date.value = new Date().toISOString().slice(0, 10);
+    cover = null;
+    $('coverPreview').hidden = true;
+    $('coverText').innerHTML = '<i class="fas fa-image"></i> Click to choose a photo (JPG, PNG or WebP)';
+    loadPosts();
+  } catch (err) {
+    show($('formMsg'), esc(err.message), 'err');
+  } finally {
+    $('publishBtn').disabled = false;
+  }
+});
+
+if (password) enter();
+</script>
+</body>
+</html>

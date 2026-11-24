@@ -1,0 +1,8 @@
+.vercel
+node_modules
+.env*
+
+# Source photos not used by any page (kept locally, not published)
+pexels-*.jpg
+Gemini_Generated_Image_*.jpg
+WhatsApp Image *.jpeg
