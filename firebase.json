@@ -4,6 +4,7 @@
     "ignore": [
       "firebase.json",
       "**/.*",
+      "**/.*/**",
       "**/node_modules/**",
       "pexels-*.jpg",
       "Gemini_Generated_Image_*.jpg",
