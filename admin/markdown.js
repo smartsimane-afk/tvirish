@@ -1,6 +1,7 @@
-// Tiny formatter for blog posts, shared by the dashboard preview and the API.
+// Tiny formatter for blog posts, used by the dashboard preview and when publishing.
 //   ## Heading / ### Subheading    - bullet    1. numbered
 //   **bold**   *italic*   [link text](https://example.com)
+//   ![photo description](blog-images/photo.jpg)   on its own line = photo
 //   A blank line starts a new paragraph.
 
 export function escapeHtml(s) {
@@ -16,6 +17,11 @@ function safeHref(url) {
   return /^(https?:\/\/|mailto:|#|\/|[\w.-]+\.html)/i.test(url) ? url : '#';
 }
 
+function safeImageSrc(url) {
+  url = url.trim();
+  return /^(https:\/\/|[\w-]+(\/[\w.-]+)*\.(jpe?g|png|webp|gif)$)/i.test(url) ? url : '';
+}
+
 function inline(text) {
   return escapeHtml(text)
     .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, label, url) => {
@@ -27,7 +33,8 @@ function inline(text) {
     .replace(/\*([^*]+)\*/g, '<em>$1</em>');
 }
 
-export function markdownToHtml(src) {
+// resolveImage lets the dashboard preview show photos that are not uploaded yet.
+export function markdownToHtml(src, { resolveImage } = {}) {
   const out = [];
   let para = [];
   let list = null; // { tag, items }
@@ -47,6 +54,11 @@ export function markdownToHtml(src) {
     if (!line) {
       flushPara();
       flushList();
+    } else if ((m = line.match(/^!\[([^\]]*)\]\(([^)\s]+)\)$/))) {
+      flushPara();
+      flushList();
+      const src = (resolveImage && resolveImage(m[2])) || safeImageSrc(m[2]);
+      if (src) out.push(`  <figure class="article-img"><img src="${escapeHtml(src)}" alt="${escapeHtml(m[1])}" loading="lazy"></figure>`);
     } else if ((m = line.match(/^(#{2,3})\s+(.*)$/))) {
       flushPara();
       flushList();
@@ -69,5 +81,6 @@ export function markdownToHtml(src) {
 }
 
 export function wordCount(src) {
-  return (String(src).match(/[\p{L}\p{N}']+/gu) || []).length;
+  const text = String(src).replace(/!\[[^\]]*\]\([^)]*\)/g, '');
+  return (text.match(/[\p{L}\p{N}']+/gu) || []).length;
 }

@@ -20,12 +20,13 @@ body{background:var(--ob-l)}
 .dash{max-width:900px;margin:0 auto;padding:30px 16px 80px}
 .panel{background:#fff;border:1px solid var(--ob-b);border-radius:16px;padding:26px;margin-bottom:24px}
 .panel h2{font-size:1.3rem;font-weight:800;margin-bottom:18px}
-.login{max-width:380px;margin:12vh auto 0}
+.login{max-width:440px;margin:8vh auto 0}
 .field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px;font:600 13px var(--ob-f);color:#444}
 .field small{font-weight:400;color:var(--ob-m)}
 .field input,.field textarea{font:400 15px var(--ob-f);padding:12px 14px;border:1px solid var(--ob-b);border-radius:8px;color:var(--ob-t);background:#fff;width:100%}
 .field input:focus,.field textarea:focus{outline:none;border-color:var(--ob-o);box-shadow:0 0 0 3px rgba(255,107,0,.12)}
 .field textarea{resize:vertical;min-height:320px;line-height:1.6}
+.check{display:flex;align-items:center;gap:8px;font-size:14px;color:#444;margin-bottom:18px}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 @media(max-width:600px){.row{grid-template-columns:1fr}}
 .toolbar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
@@ -38,7 +39,7 @@ body{background:var(--ob-l)}
 .cover-drop img{max-height:200px;margin:0 auto 10px;border-radius:8px}
 .preview{border:1px solid var(--ob-b);border-radius:8px;min-height:320px;background:#fff}
 .preview .article-body{padding:20px}
-.msg{padding:12px 14px;border-radius:8px;font-size:14px;margin-bottom:16px}
+.msg{padding:12px 14px;border-radius:8px;font-size:14px;margin-bottom:16px;line-height:1.5}
 .msg.err{background:#fdecec;color:#a11}
 .msg.ok{background:var(--ie-gt);color:var(--ie-gd)}
 .msg a{font-weight:700}
@@ -68,9 +69,13 @@ body{background:var(--ob-l)}
 
 <main class="dash">
   <form id="loginForm" class="panel login">
-    <h2>Log in</h2>
+    <h2>Log in with GitHub</h2>
     <div id="loginMsg" class="msg err" hidden></div>
-    <label class="field">Password<input type="password" id="password" required autofocus></label>
+    <label class="field">GitHub repository <small>As in its address, e.g. <code>your-username/tvirish</code></small>
+      <input id="repo" required placeholder="your-username/tvirish" pattern="[\w.-]+/[\w.-]+"></label>
+    <label class="field">Access key <small>A GitHub fine-grained token with "Contents: Read and write" on that repository.</small>
+      <input type="password" id="token" required placeholder="github_pat_…"></label>
+    <label class="check"><input type="checkbox" id="remember" checked> Keep me logged in on this device</label>
     <button class="btn btn-block" type="submit">Log in</button>
   </form>
 
@@ -85,16 +90,16 @@ body{background:var(--ob-l)}
         <label class="field">Publish date<input type="date" name="date" required></label>
         <label class="field">Category <small>Optional, e.g. Sports, Guides</small><input name="tag" maxlength="40"></label>
       </div>
-      <div class="field">Cover image
-        <label class="cover-drop" id="coverDrop">
+      <div class="field">Cover photo <small>Shown on the blog page, at the top of the article and when the link is shared.</small>
+        <label class="cover-drop">
           <img id="coverPreview" hidden alt="">
           <span id="coverText"><i class="fas fa-image"></i> Click to choose a photo (JPG, PNG or WebP)</span>
           <input type="file" id="coverInput" accept="image/jpeg,image/png,image/webp" hidden>
         </label>
       </div>
-      <label class="field">Image description <small>Describes the photo for Google and screen readers.</small><input name="imageAlt" maxlength="200"></label>
+      <label class="field">Cover photo description <small>Describes the photo for Google and screen readers.</small><input name="imageAlt" maxlength="200"></label>
 
-      <div class="field">
+      <div class="field">Article
         <div class="toolbar">
           <button type="button" data-wrap="## " title="Heading">H2</button>
           <button type="button" data-wrap="### " title="Subheading">H3</button>
@@ -103,11 +108,14 @@ body{background:var(--ob-l)}
           <button type="button" data-wrap="- " title="Bullet list"><i class="fas fa-list-ul"></i></button>
           <button type="button" data-wrap="1. " title="Numbered list"><i class="fas fa-list-ol"></i></button>
           <button type="button" data-wrap="link" title="Link"><i class="fas fa-link"></i></button>
+          <button type="button" id="photoBtn" title="Add a photo inside the article"><i class="fas fa-image"></i> Photo</button>
+          <input type="file" id="photoInput" accept="image/jpeg,image/png,image/webp" hidden>
           <span class="tabs"><button type="button" class="tab on" data-view="write">Write</button><button type="button" class="tab" data-view="preview">Preview</button></span>
         </div>
         <textarea name="body" id="body" required placeholder="Write your article here. Leave an empty line between paragraphs."></textarea>
         <div id="preview" class="preview" hidden><div class="article-body"></div></div>
-        <p class="help">Formatting: <code>## Heading</code> · <code>**bold**</code> · <code>*italic*</code> · <code>- bullet</code> · <code>1. numbered</code> · <code>[link text](https://...)</code> · empty line = new paragraph</p>
+        <p class="help">Formatting: <code>## Heading</code> · <code>**bold**</code> · <code>*italic*</code> · <code>- bullet</code> · <code>1. numbered</code> · <code>[link text](https://...)</code> · empty line = new paragraph.<br>
+          <b>Photo</b> adds a line like <code>![Describe the photo](photo:1)</code> where your cursor is. Replace "Describe the photo" with a short description.</p>
       </div>
       <button class="btn" type="submit" id="publishBtn"><i class="fas fa-paper-plane"></i>Publish post</button>
     </form>
@@ -121,71 +129,77 @@ body{background:var(--ob-l)}
 
 <script type="module">
 import { markdownToHtml } from './markdown.js';
+import { createPost, deletePost, listPosts } from './blog.js';
+import { githubStore } from './github.js';
 
 const $ = (id) => document.getElementById(id);
-const store = {
-  get() { try { return sessionStorage.getItem('blogPw') || ''; } catch { return ''; } },
-  set(v) { try { v ? sessionStorage.setItem('blogPw', v) : sessionStorage.removeItem('blogPw'); } catch {} },
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const today = () => new Date().toISOString().slice(0, 10);
+const LIVE_NOTE = 'The website updates in 1–2 minutes.';
+
+// Login details stay in this browser only.
+const saved = {
+  get() { try { return JSON.parse(localStorage.getItem('blogLogin') || sessionStorage.getItem('blogLogin') || 'null'); } catch { return null; } },
+  set(v, remember) {
+    try {
+      localStorage.removeItem('blogLogin');
+      sessionStorage.removeItem('blogLogin');
+      if (v) (remember ? localStorage : sessionStorage).setItem('blogLogin', JSON.stringify(v));
+    } catch {}
+  },
 };
-let password = store.get();
-let cover = null; // { data, type }
 
-async function api(method, body, query = '') {
-  const res = await fetch('/api/posts' + query, {
-    method,
-    headers: { 'x-admin-password': password, ...(body ? { 'Content-Type': 'application/json' } : {}) },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const data = await res.json().catch(() => ({ error: `Server error (${res.status}).` }));
-  if (!res.ok) throw Object.assign(new Error(data.error || 'Something went wrong.'), { status: res.status });
-  return data;
-}
+let store = null;
+let cover = null;          // { type, data }
+let photos = {};           // id -> { type, data, url }
+let nextPhoto = 1;
 
-function show(el, text, kind) {
+function show(el, html, kind) {
   el.className = 'msg ' + kind;
-  el.innerHTML = text;
-  el.hidden = !text;
+  el.innerHTML = html;
+  el.hidden = !html;
 }
-
-const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 async function loadPosts() {
-  const { posts } = await api('GET');
+  const posts = listPosts((await store.read('blog.html')) || '');
   $('posts').innerHTML = posts.length ? posts.map((p) => `
     <li>
-      <img src="../${esc(p.image)}" alt="">
+      <img src="../${esc(p.image)}" alt="" onerror="this.style.visibility='hidden'">
       <div class="t"><a href="../${esc(p.slug)}.html" target="_blank">${esc(p.title)}</a><small>${esc(p.date)}</small></div>
       <button class="del" data-slug="${esc(p.slug)}" data-title="${esc(p.title)}"><i class="fas fa-trash"></i> Delete</button>
     </li>`).join('') : '<li>No posts yet.</li>';
 }
 
-async function enter() {
+async function enter(login, remember) {
+  store = githubStore({ token: login.token, repo: login.repo });
   try {
+    await store.check();
     await loadPosts();
+    saved.set(login, remember);
     $('loginForm').hidden = true;
     $('app').hidden = false;
     $('logout').hidden = false;
   } catch (err) {
-    store.set('');
-    if (password) show($('loginMsg'), esc(err.message), 'err');
+    store = null;
+    saved.set(null);
+    $('repo').value = login.repo;
+    show($('loginMsg'), esc(err.message), 'err');
   }
 }
 
 $('loginForm').addEventListener('submit', (e) => {
   e.preventDefault();
-  password = $('password').value;
-  store.set(password);
-  enter();
+  enter({ repo: $('repo').value.trim(), token: $('token').value.trim() }, $('remember').checked);
 });
-$('logout').addEventListener('click', () => { store.set(''); location.reload(); });
+$('logout').addEventListener('click', () => { saved.set(null); location.reload(); });
 
 $('posts').addEventListener('click', async (e) => {
   const btn = e.target.closest('.del');
   if (!btn || !confirm(`Delete "${btn.dataset.title}"? This removes it from the website.`)) return;
   btn.disabled = true;
   try {
-    await api('DELETE', null, '?slug=' + encodeURIComponent(btn.dataset.slug));
-    show($('formMsg'), 'Post deleted. The website updates in about a minute.', 'ok');
+    await deletePost(store, btn.dataset.slug);
+    show($('formMsg'), 'Post deleted. ' + LIVE_NOTE, 'ok');
     btn.closest('li').remove();
   } catch (err) {
     alert(err.message);
@@ -193,10 +207,8 @@ $('posts').addEventListener('click', async (e) => {
   }
 });
 
-// Cover image: shrink to max 1600px wide JPEG so uploads stay small.
-$('coverInput').addEventListener('change', async () => {
-  const file = $('coverInput').files[0];
-  if (!file) return;
+// Photos are shrunk to max 1600px wide JPEG so uploads stay small and pages load fast.
+async function readPhoto(file) {
   const img = new Image();
   img.src = URL.createObjectURL(file);
   await img.decode();
@@ -208,15 +220,43 @@ $('coverInput').addEventListener('change', async () => {
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-  cover = { type: 'image/jpeg', data: dataUrl.split(',')[1] };
-  $('coverPreview').src = dataUrl;
+  URL.revokeObjectURL(img.src);
+  const url = canvas.toDataURL('image/jpeg', 0.85);
+  return { type: 'image/jpeg', data: url.split(',')[1], url };
+}
+
+function resetCover() {
+  cover = null;
+  $('coverPreview').hidden = true;
+  $('coverText').innerHTML = '<i class="fas fa-image"></i> Click to choose a photo (JPG, PNG or WebP)';
+}
+
+$('coverInput').addEventListener('change', async () => {
+  const file = $('coverInput').files[0];
+  if (!file) return;
+  cover = await readPhoto(file);
+  $('coverPreview').src = cover.url;
   $('coverPreview').hidden = false;
   $('coverText').textContent = 'Click to change the photo';
+  $('coverInput').value = '';
 });
 
-// Toolbar
 const body = $('body');
+
+$('photoBtn').addEventListener('click', () => $('photoInput').click());
+$('photoInput').addEventListener('change', async () => {
+  const file = $('photoInput').files[0];
+  if (!file) return;
+  const id = String(nextPhoto++);
+  photos[id] = await readPhoto(file);
+  const pos = body.selectionStart;
+  const before = body.value.slice(0, pos);
+  const text = `${before && !before.endsWith('\n\n') ? (before.endsWith('\n') ? '\n' : '\n\n') : ''}![Describe the photo](photo:${id})\n\n`;
+  body.setRangeText(text, pos, body.selectionEnd, 'end');
+  body.focus();
+  $('photoInput').value = '';
+});
+
 document.querySelector('.toolbar').addEventListener('click', (e) => {
   const btn = e.target.closest('[data-wrap]');
   if (!btn) return;
@@ -245,30 +285,35 @@ document.querySelector('.tabs').addEventListener('click', (e) => {
   if (!tab) return;
   const preview = tab.dataset.view === 'preview';
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('on', t === tab));
-  if (preview) $('preview').firstElementChild.innerHTML = markdownToHtml(body.value) || '<p>Nothing to preview yet.</p>';
+  if (preview) {
+    const resolveImage = (src) => {
+      if (src.startsWith('photo:')) return photos[src.slice(6)]?.url || '';
+      return /^https:/.test(src) ? src : '../' + src;
+    };
+    $('preview').firstElementChild.innerHTML = markdownToHtml(body.value, { resolveImage }) || '<p>Nothing to preview yet.</p>';
+  }
   $('preview').hidden = !preview;
   body.hidden = preview;
 });
 
-$('postForm').elements.date.value = new Date().toISOString().slice(0, 10);
+$('postForm').elements.date.value = today();
 
 $('postForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  if (!cover) return show($('formMsg'), 'Please choose a cover image.', 'err');
+  if (!cover) return show($('formMsg'), 'Please choose a cover photo.', 'err');
   const f = e.target.elements;
   $('publishBtn').disabled = true;
   show($('formMsg'), 'Publishing…', 'ok');
   try {
-    const result = await api('POST', {
+    const result = await createPost(store, {
       title: f.title.value, excerpt: f.excerpt.value, date: f.date.value, tag: f.tag.value,
-      imageAlt: f.imageAlt.value, body: f.body.value, image: cover,
+      imageAlt: f.imageAlt.value, body: f.body.value, image: cover, photos,
     });
-    show($('formMsg'), `Published! Your post will be live in about a minute at <a href="${esc(result.path)}" target="_blank">${esc(result.path)}</a>.`, 'ok');
+    show($('formMsg'), `Published! ${LIVE_NOTE} Your post will be at <a href="..${esc(result.path)}" target="_blank">${esc(result.path)}</a>.`, 'ok');
     e.target.reset();
-    f.date.value = new Date().toISOString().slice(0, 10);
-    cover = null;
-    $('coverPreview').hidden = true;
-    $('coverText').innerHTML = '<i class="fas fa-image"></i> Click to choose a photo (JPG, PNG or WebP)';
+    f.date.value = today();
+    resetCover();
+    photos = {};
     loadPosts();
   } catch (err) {
     show($('formMsg'), esc(err.message), 'err');
@@ -277,7 +322,13 @@ $('postForm').addEventListener('submit', async (e) => {
   }
 });
 
-if (password) enter();
+const login = saved.get();
+if (login) {
+  $('repo').value = login.repo;
+  let remembered = false;
+  try { remembered = !!localStorage.getItem('blogLogin'); } catch {}
+  enter(login, remembered);
+}
 </script>
 </body>
 </html>

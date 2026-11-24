@@ -1,18 +1,21 @@
-// Blog publishing logic. Works on any "store" with:
+// Blog publishing logic, run in the dashboard. Works on any "store" with:
 //   read(path) -> string | null        (file contents, null if missing)
-//   commit(message, changes)           changes: [{ path, content, encoding: 'utf-8'|'base64', isNew? } | { path, delete: true }]
-import { escapeHtml, markdownToHtml, wordCount } from '../admin/markdown.js';
+//   commit(message, changes)           changes: [{ path, content, encoding: 'utf-8'|'base64' } | { path, delete: true }]
+import { escapeHtml, markdownToHtml, wordCount } from './markdown.js';
 
 const START = '<!-- POSTS:START -->';
 const IMAGE_TYPES = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 const SLUG_RE = /^blog-[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const PHOTO_REF_RE = /\]\(photo:([\w-]+)\)/g;
 
-export class BlogError extends Error {
-  constructor(status, message) {
-    super(message);
-    this.status = status;
-  }
+export class BlogError extends Error {}
+
+function checkImage(image, what) {
+  const ext = IMAGE_TYPES[image?.type];
+  if (!ext || !image.data) throw new BlogError(`Please add ${what} (JPG, PNG or WebP).`);
+  if ((image.data.length * 3) / 4 > MAX_IMAGE_BYTES) throw new BlogError(`${what[0].toUpperCase() + what.slice(1)} is too large (max 3 MB).`);
+  return ext;
 }
 
 export function slugify(title) {
@@ -39,7 +42,7 @@ function siteUrl(blogHtml) {
 
 function between(html, startRe, endTag) {
   const start = html.search(startRe);
-  if (start < 0) throw new BlogError(500, `blog.html is missing ${startRe}`);
+  if (start < 0) throw new BlogError(`blog.html is missing ${startRe}`);
   const end = html.indexOf(endTag, start);
   return html.slice(start, end + endTag.length);
 }
@@ -134,7 +137,7 @@ ${chat}
 }
 
 export function addCard(blogHtml, p) {
-  if (!blogHtml.includes(START)) throw new BlogError(500, `blog.html is missing the ${START} marker`);
+  if (!blogHtml.includes(START)) throw new BlogError(`blog.html is missing the ${START} marker`);
   return blogHtml.replace(START, START + cardHtml(p));
 }
 
@@ -160,46 +163,61 @@ export async function createPost(store, input) {
   const excerpt = clean(input.excerpt, 300);
   const imageAlt = clean(input.imageAlt, 200) || title;
   const tag = clean(input.tag, 40);
-  const body = String(input.body ?? '').trim();
+  let body = String(input.body ?? '').trim();
   const date = /^\d{4}-\d{2}-\d{2}$/.test(input.date) ? input.date : new Date().toISOString().slice(0, 10);
-  if (!title) throw new BlogError(400, 'Please add a title.');
-  if (!excerpt) throw new BlogError(400, 'Please add a short summary.');
-  if (wordCount(body) < 20) throw new BlogError(400, 'The article text is too short.');
+  if (!title) throw new BlogError('Please add a title.');
+  if (!excerpt) throw new BlogError('Please add a short summary.');
+  if (wordCount(body) < 20) throw new BlogError('The article text is too short.');
+  const ext = checkImage(input.image, 'a cover image');
 
-  const ext = IMAGE_TYPES[input.image?.type];
-  if (!ext || !input.image.data) throw new BlogError(400, 'Please add a cover image (JPG, PNG or WebP).');
-  const imageBytes = Buffer.from(input.image.data, 'base64');
-  if (imageBytes.length > MAX_IMAGE_BYTES) throw new BlogError(400, 'The cover image is too large (max 3 MB).');
+  // Photos inside the article are written as ![description](photo:ID) until they are uploaded.
+  const photos = input.photos || {};
+  const usedIds = [...new Set([...body.matchAll(PHOTO_REF_RE)].map((m) => m[1]))];
+  for (const id of usedIds) {
+    if (!photos[id]) throw new BlogError('A photo in the article text is missing. Remove it and add it again.');
+    checkImage(photos[id], 'each photo in the article');
+  }
 
   const blogHtml = await store.read('blog.html');
-  if (!blogHtml) throw new BlogError(500, 'blog.html was not found in the GitLab repository.');
+  if (!blogHtml) throw new BlogError('blog.html was not found in the GitHub repository.');
 
   let slug = slugify(title);
   for (let n = 2; (await store.read(`${slug}.html`)) !== null; n++) slug = `${slugify(title)}-${n}`;
 
+  const changes = [];
+  usedIds.forEach((id, i) => {
+    const path = `blog-images/${slug}/photo-${i + 1}.${IMAGE_TYPES[photos[id].type]}`;
+    body = body.replaceAll(`](photo:${id})`, `](${path})`);
+    changes.push({ path, content: photos[id].data, encoding: 'base64' });
+  });
+
   const post = {
     slug, title, excerpt, tag, body, date, imageAlt,
-    image: `blog-images/${slug}.${ext}`,
+    image: `blog-images/${slug}/cover.${ext}`,
     readTime: Math.max(1, Math.round(wordCount(body) / 200)),
   };
 
   await store.commit(`Add blog post: ${title}`, [
-    { path: post.image, content: input.image.data, encoding: 'base64', isNew: true },
-    { path: `${slug}.html`, content: buildPostPage(post, blogHtml), encoding: 'utf-8', isNew: true },
+    { path: post.image, content: input.image.data, encoding: 'base64' },
+    ...changes,
+    { path: `${slug}.html`, content: buildPostPage(post, blogHtml), encoding: 'utf-8' },
     { path: 'blog.html', content: addCard(blogHtml, post), encoding: 'utf-8' },
   ]);
   return { slug, path: `/${slug}.html` };
 }
 
 export async function deletePost(store, slug) {
-  if (!SLUG_RE.test(slug || '')) throw new BlogError(400, 'Invalid post.');
+  if (!SLUG_RE.test(slug || '')) throw new BlogError('Invalid post.');
   const blogHtml = await store.read('blog.html');
   const post = listPosts(blogHtml || '').find((p) => p.slug === slug);
-  if (!post) throw new BlogError(404, 'That post is not on the blog page.');
+  if (!post) throw new BlogError('That post is not on the blog page.');
 
   const changes = [{ path: 'blog.html', content: blogHtml.replace(cardRe(slug), ''), encoding: 'utf-8' }];
-  if ((await store.read(`${slug}.html`)) !== null) changes.push({ path: `${slug}.html`, delete: true });
-  if (post.image.startsWith('blog-images/')) changes.push({ path: post.image, delete: true });
+  const page = await store.read(`${slug}.html`);
+  if (page !== null) changes.push({ path: `${slug}.html`, delete: true });
+  // Remove the photos uploaded with this post (cover + photos in the text), never the shared site photos.
+  const images = new Set([post.image, ...[...(page || '').matchAll(/src="(blog-images\/[^"]+)"/g)].map((m) => m[1])]);
+  for (const img of images) if (img.startsWith(`blog-images/${slug}/`)) changes.push({ path: img, delete: true });
   await store.commit(`Delete blog post: ${post.title}`, changes);
   return { slug };
 }

@@ -1,4 +1,4 @@
-.vercel
+.firebase
 node_modules
 .env*
 
@@ -6,3 +6,4 @@ node_modules
 pexels-*.jpg
 Gemini_Generated_Image_*.jpg
 WhatsApp Image *.jpeg
+*.log
