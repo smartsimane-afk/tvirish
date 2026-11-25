@@ -1,0 +1,21 @@
+rules_version = '2';
+
+// Only the blog dashboard uses this database: it keeps the GitHub key the dashboard publishes with.
+// Admins are the Firebase Authentication users listed here (add more emails to give more people access).
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.firebase.sign_in_provider == 'password'
+        && request.auth.token.email in ['smartsimane@gmail.com'];
+    }
+
+    match /admin/{doc} {
+      allow read, write: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

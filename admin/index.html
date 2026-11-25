@@ -63,20 +63,31 @@ body{background:var(--ob-l)}
   <div class="container">
     <strong>TV<em>irish</em> · Blog Dashboard</strong>
     <span><a href="../blog.html" target="_blank">View blog <i class="fas fa-arrow-up-right-from-square"></i></a>
-    <button id="logout" hidden>&nbsp;·&nbsp; Log out</button></span>
+    <span id="userMenu" hidden>&nbsp;·&nbsp; <button id="keyBtn">GitHub key</button>&nbsp;·&nbsp; <button id="logout">Log out</button></span></span>
   </div>
 </div>
 
 <main class="dash">
-  <form id="loginForm" class="panel login">
-    <h2>Log in with GitHub</h2>
+  <p id="loading" class="panel login">Loading…</p>
+
+  <form id="loginForm" class="panel login" hidden>
+    <h2>Log in</h2>
     <div id="loginMsg" class="msg err" hidden></div>
-    <label class="field">GitHub repository <small>As in its address, e.g. <code>your-username/tvirish</code></small>
-      <input id="repo" required placeholder="your-username/tvirish" pattern="[\w.-]+/[\w.-]+"></label>
-    <label class="field">Access key <small>A GitHub fine-grained token with "Contents: Read and write" on that repository.</small>
-      <input type="password" id="token" required placeholder="github_pat_…"></label>
-    <label class="check"><input type="checkbox" id="remember" checked> Keep me logged in on this device</label>
+    <label class="field">Email<input type="email" id="email" required autocomplete="username"></label>
+    <label class="field">Password<input type="password" id="password" required autocomplete="current-password"></label>
     <button class="btn btn-block" type="submit">Log in</button>
+    <p class="help" style="text-align:center;margin-top:14px"><a href="#" id="forgot">Forgot your password?</a></p>
+  </form>
+
+  <form id="keyForm" class="panel login" hidden>
+    <h2>Connect GitHub</h2>
+    <div id="keyMsg" class="msg err" hidden></div>
+    <p class="help" style="margin:-6px 0 16px">The dashboard publishes posts to your GitHub repository. You only do this once; the key is stored securely and only admins can read it.</p>
+    <label class="field">GitHub repository<input id="repo" required value="smartsimane-afk/tvirish" pattern="[\w.-]+/[\w.-]+"></label>
+    <label class="field">Access key <small>A fine-grained token with "Contents: Read and write" on that repository.</small>
+      <input type="password" id="token" required placeholder="github_pat_…" autocomplete="off"></label>
+    <button class="btn btn-block" type="submit">Save</button>
+    <p class="help" style="text-align:center;margin-top:14px"><a href="#" id="keyCancel" hidden>Cancel</a></p>
   </form>
 
   <div id="app" hidden>
@@ -128,26 +139,29 @@ body{background:var(--ob-l)}
 </main>
 
 <script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { markdownToHtml } from './markdown.js';
 import { createPost, deletePost, listPosts } from './blog.js';
 import { githubStore } from './github.js';
+
+// Public Firebase web config (safe to publish: access is controlled by firestore.rules).
+const app = initializeApp({
+  apiKey: 'AIzaSyCsppfRZYNCeTSXKw3_npmfrKSAqo4kybA',
+  authDomain: 'tvirish-92df9.firebaseapp.com',
+  projectId: 'tvirish-92df9',
+  storageBucket: 'tvirish-92df9.firebasestorage.app',
+  messagingSenderId: '520729881989',
+  appId: '1:520729881989:web:1b4fa83b16ceed1b35a8ec',
+});
+const auth = getAuth(app);
+const keyDoc = doc(getFirestore(app), 'admin', 'github');
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const today = () => new Date().toISOString().slice(0, 10);
 const LIVE_NOTE = 'The website updates in 1–2 minutes.';
-
-// Login details stay in this browser only.
-const saved = {
-  get() { try { return JSON.parse(localStorage.getItem('blogLogin') || sessionStorage.getItem('blogLogin') || 'null'); } catch { return null; } },
-  set(v, remember) {
-    try {
-      localStorage.removeItem('blogLogin');
-      sessionStorage.removeItem('blogLogin');
-      if (v) (remember ? localStorage : sessionStorage).setItem('blogLogin', JSON.stringify(v));
-    } catch {}
-  },
-};
 
 let store = null;
 let cover = null;          // { type, data }
@@ -170,28 +184,88 @@ async function loadPosts() {
     </li>`).join('') : '<li>No posts yet.</li>';
 }
 
-async function enter(login, remember) {
-  store = githubStore({ token: login.token, repo: login.repo });
+function screen(name) {
+  for (const id of ['loading', 'loginForm', 'keyForm', 'app']) $(id).hidden = id !== name;
+  $('userMenu').hidden = name === 'loginForm' || name === 'loading';
+}
+
+function authMessage(err) {
+  if (['auth/invalid-credential', 'auth/wrong-password', 'auth/user-not-found', 'auth/invalid-email'].includes(err.code)) return 'Wrong email or password.';
+  if (err.code === 'auth/too-many-requests') return 'Too many attempts. Wait a few minutes, or reset your password.';
+  if (err.code === 'auth/network-request-failed') return 'No internet connection.';
+  return err.message;
+}
+
+function showKeyForm(message = '', canCancel = false) {
+  $('token').value = '';
+  show($('keyMsg'), esc(message), 'err');
+  $('keyCancel').hidden = !canCancel;
+  screen('keyForm');
+}
+
+async function openDashboard(github) {
+  store = githubStore(github);
   try {
-    await store.check();
     await loadPosts();
-    saved.set(login, remember);
-    $('loginForm').hidden = true;
-    $('app').hidden = false;
-    $('logout').hidden = false;
+    screen('app');
   } catch (err) {
-    store = null;
-    saved.set(null);
-    $('repo').value = login.repo;
-    show($('loginMsg'), esc(err.message), 'err');
+    showKeyForm(err.message);
   }
 }
 
-$('loginForm').addEventListener('submit', (e) => {
-  e.preventDefault();
-  enter({ repo: $('repo').value.trim(), token: $('token').value.trim() }, $('remember').checked);
+onAuthStateChanged(auth, async (user) => {
+  if (!user) return screen('loginForm');
+  screen('loading');
+  let snap;
+  try {
+    snap = await getDoc(keyDoc);
+  } catch (err) {
+    await signOut(auth);
+    return show($('loginMsg'), err.code === 'permission-denied' ? 'This account is not an admin of the blog.' : esc(err.message), 'err');
+  }
+  const github = snap.data();
+  if (!github?.token) return showKeyForm();
+  $('repo').value = github.repo;
+  openDashboard(github);
 });
-$('logout').addEventListener('click', () => { saved.set(null); location.reload(); });
+
+$('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  show($('loginMsg'), '', 'err');
+  try {
+    await signInWithEmailAndPassword(auth, $('email').value.trim(), $('password').value);
+  } catch (err) {
+    show($('loginMsg'), esc(authMessage(err)), 'err');
+  }
+});
+
+$('forgot').addEventListener('click', async (e) => {
+  e.preventDefault();
+  const email = $('email').value.trim() || prompt('Your email address');
+  if (!email) return;
+  try {
+    await sendPasswordResetEmail(auth, email);
+    show($('loginMsg'), `If ${esc(email)} has an account, a password reset email is on its way.`, 'ok');
+  } catch (err) {
+    show($('loginMsg'), esc(authMessage(err)), 'err');
+  }
+});
+
+$('keyForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const github = { repo: $('repo').value.trim(), token: $('token').value.trim() };
+  show($('keyMsg'), '', 'err');
+  try {
+    await githubStore(github).check();
+    await setDoc(keyDoc, github);
+    openDashboard(github);
+  } catch (err) {
+    show($('keyMsg'), esc(err.message), 'err');
+  }
+});
+$('keyBtn').addEventListener('click', () => showKeyForm('', true));
+$('keyCancel').addEventListener('click', (e) => { e.preventDefault(); screen('app'); });
+$('logout').addEventListener('click', () => signOut(auth));
 
 $('posts').addEventListener('click', async (e) => {
   const btn = e.target.closest('.del');
@@ -321,14 +395,6 @@ $('postForm').addEventListener('submit', async (e) => {
     $('publishBtn').disabled = false;
   }
 });
-
-const login = saved.get();
-if (login) {
-  $('repo').value = login.repo;
-  let remembered = false;
-  try { remembered = !!localStorage.getItem('blogLogin'); } catch {}
-  enter(login, remembered);
-}
 </script>
 </body>
 </html>
