@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>Blog Dashboard | TVirish</title>
-<link rel="icon" type="image/jpeg" href="../logo.jpg">
+<link rel="icon" type="image/jpeg" href="/logo.jpg">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/fontawesome.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/solid.min.css">
-<link rel="stylesheet" href="../styles.css">
+<link rel="stylesheet" href="/styles.css">
 <style>
 body{background:var(--ob-l)}
 .dash-top{background:var(--ob-k);color:#fff;padding:14px 0}
@@ -62,7 +62,7 @@ body{background:var(--ob-l)}
 <div class="dash-top">
   <div class="container">
     <strong>TV<em>irish</em> · Blog Dashboard</strong>
-    <span><a href="../blog.html" target="_blank">View blog <i class="fas fa-arrow-up-right-from-square"></i></a>
+    <span><a href="/blog.html" target="_blank">View blog <i class="fas fa-arrow-up-right-from-square"></i></a>
     <span id="userMenu" hidden>&nbsp;·&nbsp; <button id="keyBtn">GitHub key</button>&nbsp;·&nbsp; <button id="logout">Log out</button></span></span>
   </div>
 </div>
@@ -142,9 +142,9 @@ body{background:var(--ob-l)}
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { markdownToHtml } from './markdown.js';
-import { createPost, deletePost, listPosts } from './blog.js';
-import { githubStore } from './github.js';
+import { markdownToHtml } from '/admin/markdown.js';
+import { createPost, deletePost, listPosts } from '/admin/blog.js';
+import { githubStore } from '/admin/github.js';
 
 // Public Firebase web config (safe to publish: access is controlled by firestore.rules).
 const app = initializeApp({
@@ -178,8 +178,8 @@ async function loadPosts() {
   const posts = listPosts((await store.read('blog.html')) || '');
   $('posts').innerHTML = posts.length ? posts.map((p) => `
     <li>
-      <img src="../${esc(p.image)}" alt="" onerror="this.style.visibility='hidden'">
-      <div class="t"><a href="../${esc(p.slug)}.html" target="_blank">${esc(p.title)}</a><small>${esc(p.date)}</small></div>
+      <img src="/${esc(p.image)}" alt="" onerror="this.style.visibility='hidden'">
+      <div class="t"><a href="/${esc(p.slug)}.html" target="_blank">${esc(p.title)}</a><small>${esc(p.date)}</small></div>
       <button class="del" data-slug="${esc(p.slug)}" data-title="${esc(p.title)}"><i class="fas fa-trash"></i> Delete</button>
     </li>`).join('') : '<li>No posts yet.</li>';
 }
@@ -362,7 +362,7 @@ document.querySelector('.tabs').addEventListener('click', (e) => {
   if (preview) {
     const resolveImage = (src) => {
       if (src.startsWith('photo:')) return photos[src.slice(6)]?.url || '';
-      return /^https:/.test(src) ? src : '../' + src;
+      return /^https:/.test(src) ? src : '/' + src;
     };
     $('preview').firstElementChild.innerHTML = markdownToHtml(body.value, { resolveImage }) || '<p>Nothing to preview yet.</p>';
   }
@@ -383,7 +383,7 @@ $('postForm').addEventListener('submit', async (e) => {
       title: f.title.value, excerpt: f.excerpt.value, date: f.date.value, tag: f.tag.value,
       imageAlt: f.imageAlt.value, body: f.body.value, image: cover, photos,
     });
-    show($('formMsg'), `Published! ${LIVE_NOTE} Your post will be at <a href="..${esc(result.path)}" target="_blank">${esc(result.path)}</a>.`, 'ok');
+    show($('formMsg'), `Published! ${LIVE_NOTE} Your post will be at <a href="${esc(result.path)}" target="_blank">${esc(result.path)}</a>.`, 'ok');
     e.target.reset();
     f.date.value = today();
     resetCover();
