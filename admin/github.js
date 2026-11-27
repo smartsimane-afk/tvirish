@@ -1,5 +1,5 @@
 // Store backed by a GitHub repository, called straight from the browser.
-// Every commit triggers the GitHub Action that deploys the site to Firebase Hosting.
+// Every commit triggers a new Vercel deployment of the site.
 const decodeBase64Utf8 = (b64) => new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\s/g, '')), (c) => c.charCodeAt(0)));
 
 export function githubStore({ token, repo, branch = 'main' }) {
